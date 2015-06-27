@@ -24,17 +24,20 @@ module Host.Cpu (
 , initCpu
 
   -- Functions
-, fetchInstruction
 , executeInstruction
 , loadYRegisterWithConstant
-
-  -- Testing functions
+, getByteWithProgramCounter
 , setMemory
 , bytesToShort
+, storeYRegisterInMemory
+, loadAddressFromMemory
 ) where
 
 import Host.Memory (Short, Bit, Byte, Memory, initMemory, getByte, setByte);
 import Data.Bits (shift)
+import Control.Monad.Trans.State
+
+type CpuState = State Cpu
 
 -- Disabling some of the features for the initial implementation
 data Cpu = Cpu { accumulator :: Byte
@@ -63,9 +66,13 @@ initCpu :: Cpu
 initCpu = Cpu 0 0 0 0 0 (initMemory 256)
 
 -- Helper function
-fetchInstruction :: Cpu -> (Byte, Cpu)
-fetchInstruction cpu = ((getByte (memory cpu) (programCounter cpu)),
-                        (incrementProgramCounter cpu))
+getByteWithProgramCounter :: CpuState Byte
+getByteWithProgramCounter = do
+  cpu <- get
+  let (instruction, newCpu) = ( (getByte (memory cpu) (programCounter cpu))
+                              , (incrementProgramCounter cpu) )
+  put newCpu
+  return instruction
 
 -- Helper function
 incrementProgramCounter :: Cpu -> Cpu
@@ -74,12 +81,12 @@ incrementProgramCounter cpu = cpu { programCounter = (programCounter cpu) + 1 }
 -- Helper function
 executeInstruction :: Cpu -> Byte -> Cpu
 executeInstruction cpu 0x00 = cpu
-executeInstruction cpu 0xA0 = loadYRegisterWithConstant cpu
+--executeInstruction cpu 0xA0 = loadYRegisterWithConstant cpu
 --executeInstruction cpu 0x40 = returnFromInterupt cpu
 --executeInstruction cpu 0x4C = jump cpu
 --executeInstruction cpu 0x6D = addWithCarry cpu
 --executeInstruction cpu 0x8A = transferXRegisterToAccumulator cpu
-executeInstruction cpu 0x8C = storeYRegisterInMemory cpu
+--executeInstruction cpu 0x8C = storeYRegisterInMemory cpu
 --executeInstruction cpu 0x8D = storeAccumulatorInMemory cpu
 --executeInstruction cpu 0x8E = storeXRegisterInMemory cpu
 --executeInstruction cpu 0x98 = transferYRegisterToAccumulator cpu
@@ -102,23 +109,17 @@ executeInstruction cpu 0x8C = storeYRegisterInMemory cpu
 -- Internal function. I will see if I can expose it in an internals module to
 -- test. I don't want to expose direct opcode functions but I need to be able to
 -- test them so I will test internals.
-loadYRegisterWithConstant :: Cpu -> Cpu
-loadYRegisterWithConstant cpu = cpu { y = getByte (memory cpu)
-                                                  (programCounter cpu)
-                                    , programCounter = (programCounter cpu) + 1
-                                    }
+loadYRegisterWithConstant :: CpuState ()
+loadYRegisterWithConstant = do
+  value <- getByteWithProgramCounter
+  modify (\cpu -> cpu { y = value } )
+  return ()
 
-storeYRegisterInMemory :: Cpu -> Cpu
-storeYRegisterInMemory cpu = cpuStateAfterSet
-  where
-    getAddress = loadAddressFromMemory cpu
-    address = fst getAddress
-    cpuStateAfterLoad = snd getAddress
-    cpuStateAfterSet = cpuStateAfterLoad {
-                         memory = setByte (memory cpuStateAfterLoad)
-                                          address
-                                          (y cpu)
-                       }
+storeYRegisterInMemory :: CpuState ()
+storeYRegisterInMemory = do
+  address <- loadAddressFromMemory
+  modify (\cpu -> cpu { memory = setByte (memory cpu) address (y cpu) })
+  return ()
 
 -- This function only exists so I can manually set memory easily in GHCI
 -- It will be removed when I have a better way of testing
@@ -126,12 +127,12 @@ setMemory :: Cpu -> Short -> Byte -> Cpu
 setMemory cpu address value =
   cpu { memory = setByte (memory cpu) address value }
 
-loadAddressFromMemory :: Cpu -> (Short, Cpu)
-loadAddressFromMemory cpu =
-  ( bytesToShort lowByte highByte, cpu { programCounter = (pc cpu) + 2 })
-  where
-    lowByte = getByte (memory cpu) (pc cpu)
-    highByte = getByte (memory cpu) ((pc cpu) + 1)
+loadAddressFromMemory :: CpuState Short
+loadAddressFromMemory = do
+  lowByte <- getByteWithProgramCounter
+  highByte <- getByteWithProgramCounter
+  return $ bytesToShort lowByte highByte
+
 
 -- TODO: Move this into another file of utils so I can unit test it
 bytesToShort :: Byte -> Byte -> Short
