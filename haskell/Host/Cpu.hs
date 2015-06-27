@@ -77,8 +77,11 @@ getByteWithProgramCounter = do
 getProgramCounter :: CpuState Short
 getProgramCounter = do
   currentProgramCounter <- gets programCounter
-  modify (\cpu -> cpu { programCounter = currentProgramCounter + 1 })
+  modify incrementProgramCounter
   return currentProgramCounter
+
+incrementProgramCounter :: Cpu -> Cpu
+incrementProgramCounter cpu = cpu { programCounter = (programCounter cpu) + 1 }
 
 -- Helper function
 executeInstruction :: Cpu -> Byte -> Cpu
