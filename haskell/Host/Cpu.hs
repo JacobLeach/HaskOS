@@ -31,6 +31,7 @@ module Host.Cpu (
 , bytesToShort
 , storeYRegisterInMemory
 , loadAddressFromMemory
+, getProgramCounter
 ) where
 
 import Host.Memory (Short, Bit, Byte, Memory, initMemory, getByte, setByte);
@@ -68,15 +69,16 @@ initCpu = Cpu 0 0 0 0 0 (initMemory 256)
 -- Helper function
 getByteWithProgramCounter :: CpuState Byte
 getByteWithProgramCounter = do
-  cpu <- get
-  let (instruction, newCpu) = ( (getByte (memory cpu) (programCounter cpu))
-                              , (incrementProgramCounter cpu) )
-  put newCpu
-  return instruction
+  programCounter <- getProgramCounter
+  memory <- gets memory
+  return (getByte memory programCounter)
 
 -- Helper function
-incrementProgramCounter :: Cpu -> Cpu
-incrementProgramCounter cpu = cpu { programCounter = (programCounter cpu) + 1 }
+getProgramCounter :: CpuState Short
+getProgramCounter = do
+  currentProgramCounter <- gets programCounter
+  modify (\cpu -> cpu { programCounter = currentProgramCounter + 1 })
+  return currentProgramCounter
 
 -- Helper function
 executeInstruction :: Cpu -> Byte -> Cpu
