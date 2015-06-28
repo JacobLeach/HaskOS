@@ -26,12 +26,13 @@ module Host.Cpu (
   -- Functions
 , executeInstruction
 , loadYRegisterWithConstant
-, getByteWithProgramCounter
-, setMemory
+, loadProgramCounterImmediate
+, writeByte
 , bytesToShort
 , storeYRegisterInMemory
 , loadAddressFromMemory
-, getProgramCounter
+, incrementProgramCounter
+, programCounter
 ) where
 
 import Host.Memory (Short, Bit, Byte, Memory, initMemory, getByte, setByte);
@@ -48,8 +49,8 @@ data Cpu = Cpu { accumulator :: Byte
                --, return :: Short
                , stackPointer :: Byte
                --, status :: StatusFlags
-               , x :: Byte
-               , y :: Byte
+               , xRegister :: Byte
+               , yRegister :: Byte
                , memory :: Memory
                } deriving (Show)
 
@@ -67,82 +68,164 @@ initCpu :: Cpu
 initCpu = Cpu 0 0 0 0 0 (initMemory 256)
 
 -- Helper function
-getByteWithProgramCounter :: CpuState Byte
-getByteWithProgramCounter = do
-  programCounter <- getProgramCounter
+loadProgramCounterImmediate :: CpuState Byte
+loadProgramCounterImmediate = do
+  programCounter <- gets programCounter
   memory <- gets memory
-  return (getByte memory programCounter)
+  let byte = getByte memory programCounter
+  incrementProgramCounter
+  return (byte)
+loadProgramCounterImmediate :: CpuState Short
+loadProgramCounterImmediate = do
+  lowByte <- loadProgramCounterImmediate
+  highByte <- loadProgramCounterImmediate
+  return $ bytesToShort lowByte highByte
 
--- Helper function
-getProgramCounter :: CpuState Short
-getProgramCounter = do
-  currentProgramCounter <- gets programCounter
-  modify incrementProgramCounter
-  return currentProgramCounter
-
-incrementProgramCounter :: Cpu -> Cpu
-incrementProgramCounter cpu = cpu { programCounter = (programCounter cpu) + 1 }
-
--- Helper function
-executeInstruction :: Cpu -> Byte -> Cpu
-executeInstruction cpu 0x00 = cpu
---executeInstruction cpu 0xA0 = loadYRegisterWithConstant cpu
---executeInstruction cpu 0x40 = returnFromInterupt cpu
---executeInstruction cpu 0x4C = jump cpu
---executeInstruction cpu 0x6D = addWithCarry cpu
---executeInstruction cpu 0x8A = transferXRegisterToAccumulator cpu
---executeInstruction cpu 0x8C = storeYRegisterInMemory cpu
---executeInstruction cpu 0x8D = storeAccumulatorInMemory cpu
---executeInstruction cpu 0x8E = storeXRegisterInMemory cpu
---executeInstruction cpu 0x98 = transferYRegisterToAccumulator cpu
---executeInstruction cpu 0xA0 = loadYRegisterWithConstant cpu
---executeInstruction cpu 0xA2 = loadXRegisterWithConstant cpu
---executeInstruction cpu 0xA8 = transferAccumulatorToYRegister cpu
---executeInstruction cpu 0xA9 = loadAccumulatorWithConstant cpu
---executeInstruction cpu 0xAA = transferAccumulatorToXRegister cpu
---executeInstruction cpu 0xAC = loadYRegisterFromMemory cpu
---executeInstruction cpu 0xAD = loadAccumulatorFromMemory cpu
---executeInstruction cpu 0xAE = loadXRegisterFromMemory cpu
---executeInstruction cpu 0xCC = compareY cpu
---executeInstruction cpu 0xD0 = branchNotEqual cpu
---executeInstruction cpu 0xEA = noOperation cpu
---executeInstruction cpu 0xEC = compareX cpu
---executeInstruction cpu 0xEE = increment cpu
---executeInstruction cpu 0xF0 = branchEqual cpu
---executeInstruction cpu 0xFF = systemCall cpu
-
--- Internal function. I will see if I can expose it in an internals module to
--- test. I don't want to expose direct opcode functions but I need to be able to
--- test them so I will test internals.
-loadYRegisterWithConstant :: CpuState ()
-loadYRegisterWithConstant = do
-  value <- getByteWithProgramCounter
-  modify (\cpu -> cpu { y = value } )
+incrementProgramCounter :: CpuState ()
+incrementProgramCounter = do
+  modify (\cpu -> cpu { programCounter = (programCounter cpu) + 1 })
   return ()
+
+-- Helper function
+executeInstruction :: Byte -> CpuState ()
+executeInstruction 0x00 = return ()
+--executeInstruction 0x40 = returnFromInterupt
+--executeInstruction 0x4C = jump
+--executeInstruction 0x6D = addWithCarry
+--executeInstruction 0x8A = transferXRegisterToAccumulator
+--executeInstruction 0x8C = storeYRegisterInMemory
+--executeInstruction 0x8D = storeAccumulatorInMemory
+--executeInstruction 0x8E = storeXRegisterInMemory
+--executeInstruction 0x98 = transferYRegisterToAccumulator
+--executeInstruction 0xA0 = loadYRegisterWithConstant
+--executeInstruction 0xA2 = loadXRegisterWithConstant
+--executeInstruction 0xA8 = transferAccumulatorToYRegister
+--executeInstruction 0xA9 = loadAccumulatorWithConstant
+--executeInstruction 0xAA = transferAccumulatorToXRegister
+--executeInstruction 0xAC = loadYRegisterAbsolute
+--executeInstruction 0xAD = loadAccumulatorAbsolute
+--executeInstruction 0xAE = loadXRegisterAbsolute
+--executeInstruction 0xCC = compareY
+--executeInstruction 0xD0 = branchNotEqual
+--executeInstruction 0xEA = noOperation
+--executeInstruction 0xEC = compareX
+--executeInstruction 0xEE = increment
+--executeInstruction 0xF0 = branchEqual
+--executeInstruction 0xFF = systemCall
+
+loadRegisterAbsolute :: (Byte -> CpuState ()) -> CpuState ()
+loadRegisterAbsolute register = do
+  value <- loadByteAbsolute
+  register value
+  return ()
+
+loadAccumulatorAbsolute :: CpuState ()
+loadAccumulatorAbsolute = loadRegisterAbsolute setAccumulator
+
+loadYRegisterAbsolute :: CpuState ()
+loadYRegisterAbsolute = loadRegisterAbsolute setYRegister
+
+loadXRegisterAbsolute :: CpuState ()
+loadXRegisterAbsolute = loadRegisterAbsolute setXRegister
+
+-- Transfer instructions
+
+transferRegisterToRegister :: (Cpu -> Byte) -> (Byte -> CpuState()) ->
+                              CpuState()
+transferRegisterToRegister source destination = do
+  sourceValue <- gets source
+  destination sourceValue
+  return ()
+
+transferXRegisterToAccumulator :: CpuState ()
+transferXRegisterToAccumulator
+  = transferRegisterToRegister xRegister setAccumulator
+
+transferAccumulatorToXRegister :: CpuState ()
+transferAccumulatorToXRegister
+ = transferRegisterToRegister accumulator setXRegister
+
+transferAccumulatorToYRegister :: CpuState ()
+transferAccumulatorToYRegister
+  = transferRegisterToRegister accumulator setYRegister
+
+-- Load immediate (constant) value instructions
+
+loadRegisterImmediate :: (Byte -> CpuState ()) -> CpuState ()
+loadRegisterImmediate register = do
+  value <- loadProgramCounterImmediate
+  register value
+  return ()
+
+loadAccumulatorImmediate :: CpuState ()
+loadAccumulatorImmediate = loadRegisterImmediate setAccumulator
+
+loadXRegisterImmediate :: CpuState ()
+loadXRegisterImmediate = loadRegisterImmediate setXRegister
+
+loadYRegisterImmediate :: CpuState ()
+loadYRegisterImmediate = loadRegisterImmediate setYRegister
+
+-- Store Absolute
+
+storeByteAbsolute :: Byte -> CpuState ()
+storeByteAbsolute byte = undefined
+
+
+storeRegisterAbsolute :: (Cpu -> Byte) -> CpuState ()
+storeRegisterAbsolute = do
+  writeByte
+
+storeAccumulatorAbsolute :: CpuState ()
+storeAccumulatorAbsolute = do
+  address <- loadAddressFromMemory
+  accumulator <- gets accumulator
+  writeByte address accumulator
+  return ()
+
+storeXRegisterInMemory :: CpuState ()
+storeXRegisterInMemory = do
+  address <- loadAddressFromMemory
+  xRegister <- gets xRegister
+  writeByte address xRegister
+  return ()
+
+transferYRegisterToAccumulator :: CpuState ()
+transferYRegisterToAccumulator = do
+  yRegister <- gets yRegister
+  setAccumulator yRegister
+  return ()
+
 
 storeYRegisterInMemory :: CpuState ()
 storeYRegisterInMemory = do
   address <- loadAddressFromMemory
-  modify (\cpu -> cpu { memory = setByte (memory cpu) address (y cpu) })
+  yRegister <- gets yRegister
+  writeByte address yRegister
   return ()
 
--- This function only exists so I can manually set memory easily in GHCI
--- It will be removed when I have a better way of testing
-setMemory :: Cpu -> Short -> Byte -> Cpu
-setMemory cpu address value =
-  cpu { memory = setByte (memory cpu) address value }
+setAccumulator :: Byte -> CpuState()
+setAccumulator value = do
+  modify (\cpu -> cpu { accumulator = value } )
+  return ()
 
-loadAddressFromMemory :: CpuState Short
-loadAddressFromMemory = do
-  lowByte <- getByteWithProgramCounter
-  highByte <- getByteWithProgramCounter
-  return $ bytesToShort lowByte highByte
+setYRegister :: Byte -> CpuState()
+setYRegister value = do
+  modify (\cpu -> cpu { yRegister = value } )
+  return ()
 
+setXRegister :: Byte -> CpuState()
+setXRegister value = do
+  modify (\cpu -> cpu { xRegister = value } )
+  return ()
+
+writeByte :: Short -> Byte -> CpuState()
+writeByte address value = do
+  memory <- gets memory
+  modify (\cpu -> cpu { memory = setByte memory address value })
+  return ()
 
 -- TODO: Move this into another file of utils so I can unit test it
 bytesToShort :: Byte -> Byte -> Short
 bytesToShort lowByte highByte = (fromIntegral lowByte :: Short) +
                                 ((fromIntegral highByte :: Short) `shift` 8)
-
-pc :: Cpu -> Short
-pc = programCounter
