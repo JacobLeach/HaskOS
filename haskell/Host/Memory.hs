@@ -22,12 +22,8 @@ initMemory,
  setByte
 ) where
 
+import Host.Device
 import Data.Array
-import Data.Word (Word8, Word16)
-
-type Short = Word16
-type Byte = Word8
-type Bit = Bool
 
 data Memory = Memory (Array Short Byte) deriving (Show)
 

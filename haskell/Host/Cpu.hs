@@ -25,19 +25,15 @@ module Host.Cpu (
 
   -- Functions
 , executeInstruction
-, loadYRegisterWithConstant
-, loadProgramCounterImmediate
 , writeByte
 , bytesToShort
-, storeYRegisterInMemory
-, loadAddressFromMemory
 , incrementProgramCounter
 , programCounter
 ) where
 
 import Host.Memory (Short, Bit, Byte, Memory, initMemory, getByte, setByte);
-import Data.Bits (shift)
 import Control.Monad.Trans.State
+import Host.Device (bytesToShort)
 
 type CpuState = State Cpu
 
@@ -54,6 +50,26 @@ data Cpu = Cpu { accumulator :: Byte
                , memory :: Memory
                } deriving (Show)
 
+setAccumulator :: Byte -> CpuState()
+setAccumulator value = do
+  modify (\cpu -> cpu { accumulator = value } )
+  return ()
+
+setYRegister :: Byte -> CpuState()
+setYRegister value = do
+  modify (\cpu -> cpu { yRegister = value } )
+  return ()
+
+setXRegister :: Byte -> CpuState()
+setXRegister value = do
+  modify (\cpu -> cpu { xRegister = value } )
+  return ()
+
+setProgramCounter :: Byte -> CpuState()
+setProgramCounter value = do
+  modify (\cpu -> cpu { programCounter = value} )
+  return ()
+
 data StatusFlags = StatusFlags { break :: Bit
                                , carry :: Bit
                                , interruptDisable :: Bit
@@ -67,23 +83,57 @@ data StatusFlags = StatusFlags { break :: Bit
 initCpu :: Cpu
 initCpu = Cpu 0 0 0 0 0 (initMemory 256)
 
+writeByte :: Short -> Byte -> CpuState()
+writeByte address value = do
+  memory <- gets memory
+  modify (\cpu -> cpu { memory = setByte memory address value })
+
 -- Helper function
-loadProgramCounterImmediate :: CpuState Byte
-loadProgramCounterImmediate = do
+loadByteProgramCounterImmediate :: CpuState Byte
+loadByteProgramCounterImmediate = do
   programCounter <- gets programCounter
   memory <- gets memory
   let byte = getByte memory programCounter
   incrementProgramCounter
   return (byte)
-loadProgramCounterImmediate :: CpuState Short
-loadProgramCounterImmediate = do
-  lowByte <- loadProgramCounterImmediate
-  highByte <- loadProgramCounterImmediate
+
+loadShortProgramCounterImmediate :: CpuState Short
+loadShortProgramCounterImmediate = do
+  lowByte <- loadByteProgramCounterImmediate
+  highByte <- loadByteProgramCounterImmediate
   return $ bytesToShort lowByte highByte
 
 incrementProgramCounter :: CpuState ()
 incrementProgramCounter = do
   modify (\cpu -> cpu { programCounter = (programCounter cpu) + 1 })
+  return ()
+
+transferRegisterToRegister :: (Cpu -> Byte) -> (Byte -> CpuState()) ->
+                              CpuState()
+transferRegisterToRegister source destination = do
+  sourceValue <- gets source
+  destination sourceValue
+  return ()
+
+loadRegisterImmediate :: (Byte -> CpuState ()) -> CpuState ()
+loadRegisterImmediate register = do
+  value <- loadByteProgramCounterImmediate
+  register value
+  return ()
+
+loadRegisterAbsolute :: (Byte -> CpuState ()) -> CpuState ()
+loadRegisterAbsolute register = do
+  address <- loadShortProgramCounterImmediate
+  memory <- gets memory
+  let value = getByte memory address
+  register value
+  return ()
+
+storeRegisterAbsolute :: (Cpu -> Byte) -> CpuState ()
+storeRegisterAbsolute register = do
+  address <- loadShortProgramCounterImmediate
+  register <- gets register
+  writeByte address register
   return ()
 
 -- Helper function
@@ -113,33 +163,15 @@ executeInstruction 0x00 = return ()
 --executeInstruction 0xF0 = branchEqual
 --executeInstruction 0xFF = systemCall
 
-loadRegisterAbsolute :: (Byte -> CpuState ()) -> CpuState ()
-loadRegisterAbsolute register = do
-  value <- loadByteAbsolute
-  register value
-  return ()
-
-loadAccumulatorAbsolute :: CpuState ()
-loadAccumulatorAbsolute = loadRegisterAbsolute setAccumulator
-
-loadYRegisterAbsolute :: CpuState ()
-loadYRegisterAbsolute = loadRegisterAbsolute setYRegister
-
-loadXRegisterAbsolute :: CpuState ()
-loadXRegisterAbsolute = loadRegisterAbsolute setXRegister
-
 -- Transfer instructions
-
-transferRegisterToRegister :: (Cpu -> Byte) -> (Byte -> CpuState()) ->
-                              CpuState()
-transferRegisterToRegister source destination = do
-  sourceValue <- gets source
-  destination sourceValue
-  return ()
 
 transferXRegisterToAccumulator :: CpuState ()
 transferXRegisterToAccumulator
   = transferRegisterToRegister xRegister setAccumulator
+
+transferYRegisterToAccumulator :: CpuState ()
+transferYRegisterToAccumulator
+  = transferRegisterToRegister yRegister setAccumulator
 
 transferAccumulatorToXRegister :: CpuState ()
 transferAccumulatorToXRegister
@@ -151,12 +183,6 @@ transferAccumulatorToYRegister
 
 -- Load immediate (constant) value instructions
 
-loadRegisterImmediate :: (Byte -> CpuState ()) -> CpuState ()
-loadRegisterImmediate register = do
-  value <- loadProgramCounterImmediate
-  register value
-  return ()
-
 loadAccumulatorImmediate :: CpuState ()
 loadAccumulatorImmediate = loadRegisterImmediate setAccumulator
 
@@ -166,66 +192,22 @@ loadXRegisterImmediate = loadRegisterImmediate setXRegister
 loadYRegisterImmediate :: CpuState ()
 loadYRegisterImmediate = loadRegisterImmediate setYRegister
 
+loadAccumulatorAbsolute :: CpuState ()
+loadAccumulatorAbsolute = loadRegisterAbsolute setAccumulator
+
+loadYRegisterAbsolute :: CpuState ()
+loadYRegisterAbsolute = loadRegisterAbsolute setYRegister
+
+loadXRegisterAbsolute :: CpuState ()
+loadXRegisterAbsolute = loadRegisterAbsolute setXRegister
+
 -- Store Absolute
 
-storeByteAbsolute :: Byte -> CpuState ()
-storeByteAbsolute byte = undefined
-
-
-storeRegisterAbsolute :: (Cpu -> Byte) -> CpuState ()
-storeRegisterAbsolute = do
-  writeByte
-
 storeAccumulatorAbsolute :: CpuState ()
-storeAccumulatorAbsolute = do
-  address <- loadAddressFromMemory
-  accumulator <- gets accumulator
-  writeByte address accumulator
-  return ()
+storeAccumulatorAbsolute = storeRegisterAbsolute accumulator
 
-storeXRegisterInMemory :: CpuState ()
-storeXRegisterInMemory = do
-  address <- loadAddressFromMemory
-  xRegister <- gets xRegister
-  writeByte address xRegister
-  return ()
+storeXRegisterAbsolute :: CpuState ()
+storeXRegisterAbsolute = storeRegisterAbsolute xRegister
 
-transferYRegisterToAccumulator :: CpuState ()
-transferYRegisterToAccumulator = do
-  yRegister <- gets yRegister
-  setAccumulator yRegister
-  return ()
-
-
-storeYRegisterInMemory :: CpuState ()
-storeYRegisterInMemory = do
-  address <- loadAddressFromMemory
-  yRegister <- gets yRegister
-  writeByte address yRegister
-  return ()
-
-setAccumulator :: Byte -> CpuState()
-setAccumulator value = do
-  modify (\cpu -> cpu { accumulator = value } )
-  return ()
-
-setYRegister :: Byte -> CpuState()
-setYRegister value = do
-  modify (\cpu -> cpu { yRegister = value } )
-  return ()
-
-setXRegister :: Byte -> CpuState()
-setXRegister value = do
-  modify (\cpu -> cpu { xRegister = value } )
-  return ()
-
-writeByte :: Short -> Byte -> CpuState()
-writeByte address value = do
-  memory <- gets memory
-  modify (\cpu -> cpu { memory = setByte memory address value })
-  return ()
-
--- TODO: Move this into another file of utils so I can unit test it
-bytesToShort :: Byte -> Byte -> Short
-bytesToShort lowByte highByte = (fromIntegral lowByte :: Short) +
-                                ((fromIntegral highByte :: Short) `shift` 8)
+storeYRegisterAbsolute:: CpuState ()
+storeYRegisterAbsolute = storeRegisterAbsolute yRegister
