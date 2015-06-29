@@ -30,8 +30,8 @@ data Memory = Memory (Array Short Byte) deriving (Show)
 initMemory :: Short -> Memory
 initMemory size = Memory $ array (0, size) [ (i, 0) | i <- [0..size]]
 
-setByte :: Memory -> Short -> Byte -> Memory
-setByte (Memory a) address value = Memory $ a // [(address, value)]
+instance Device Memory where
+  setByte address value (Memory a) = Memory $ a // [(address, value)]
+  getByte address (Memory a) = a ! address
 
-getByte :: Memory -> Short -> Byte
-getByte (Memory a) address = a ! address
+

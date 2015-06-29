@@ -65,7 +65,7 @@ setXRegister value = do
   modify (\cpu -> cpu { xRegister = value } )
   return ()
 
-setProgramCounter :: Byte -> CpuState()
+setProgramCounter :: Short -> CpuState()
 setProgramCounter value = do
   modify (\cpu -> cpu { programCounter = value} )
   return ()
@@ -86,14 +86,14 @@ initCpu = Cpu 0 0 0 0 0 (initMemory 256)
 writeByte :: Short -> Byte -> CpuState()
 writeByte address value = do
   memory <- gets memory
-  modify (\cpu -> cpu { memory = setByte memory address value })
+  modify (\cpu -> cpu { memory = setByte address value memory})
 
 -- Helper function
 loadByteProgramCounterImmediate :: CpuState Byte
 loadByteProgramCounterImmediate = do
   programCounter <- gets programCounter
   memory <- gets memory
-  let byte = getByte memory programCounter
+  let byte = getByte programCounter memory
   incrementProgramCounter
   return (byte)
 
@@ -125,7 +125,7 @@ loadRegisterAbsolute :: (Byte -> CpuState ()) -> CpuState ()
 loadRegisterAbsolute register = do
   address <- loadShortProgramCounterImmediate
   memory <- gets memory
-  let value = getByte memory address
+  let value = getByte address memory
   register value
   return ()
 

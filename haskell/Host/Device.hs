@@ -3,6 +3,7 @@ module Host.Device
     Byte
   , Short
   , Bit
+  , Device(getByte, setByte)
   , bytesToShort
   ) where
 
