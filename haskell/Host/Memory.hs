@@ -33,5 +33,3 @@ initMemory size = Memory $ array (0, size) [ (i, 0) | i <- [0..size]]
 instance Device Memory where
   setByte address value (Memory a) = Memory $ a // [(address, value)]
   getByte address (Memory a) = a ! address
-
-
