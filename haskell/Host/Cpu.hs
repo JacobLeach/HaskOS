@@ -31,9 +31,9 @@ module Host.Cpu (
 , programCounter
 ) where
 
-import Host.Memory (Short, Bit, Byte, Memory, initMemory, getByte, setByte);
 import Control.Monad.Trans.State
-import Host.Device (bytesToShort)
+import Host.Device
+import Host.Bus
 
 type CpuState = State Cpu
 
@@ -47,8 +47,8 @@ data Cpu = Cpu { accumulator :: Byte
                --, status :: StatusFlags
                , xRegister :: Byte
                , yRegister :: Byte
-               , memory :: Memory
-               } deriving (Show)
+               , memory :: Bus
+               }
 
 setAccumulator :: Byte -> CpuState()
 setAccumulator value = do
@@ -81,7 +81,7 @@ data StatusFlags = StatusFlags { break :: Bit
 
 -- Easy way to get Cpu will all blanks
 initCpu :: Cpu
-initCpu = Cpu 0 0 0 0 0 (initMemory 256)
+initCpu = undefined
 
 writeByte :: Short -> Byte -> CpuState()
 writeByte address value = do
@@ -143,9 +143,9 @@ executeInstruction 0x00 = return ()
 --executeInstruction 0x4C = jump
 --executeInstruction 0x6D = addWithCarry
 --executeInstruction 0x8A = transferXRegisterToAccumulator
---executeInstruction 0x8C = storeYRegisterInMemory
---executeInstruction 0x8D = storeAccumulatorInMemory
---executeInstruction 0x8E = storeXRegisterInMemory
+--executeInstruction 0x8C = storeYRegisterInBus
+--executeInstruction 0x8D = storeAccumulatorInBus
+--executeInstruction 0x8E = storeXRegisterInBus
 --executeInstruction 0x98 = transferYRegisterToAccumulator
 --executeInstruction 0xA0 = loadYRegisterWithConstant
 --executeInstruction 0xA2 = loadXRegisterWithConstant

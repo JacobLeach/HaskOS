@@ -1,6 +1,11 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
-module Host.Bus () where
+module Host.Bus
+  (
+    Bus (Bus)
+  , getByte
+  , setByte
+  ) where
 
 import Host.Device
 
