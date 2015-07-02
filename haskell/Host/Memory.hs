@@ -7,20 +7,15 @@ A quick implementation of main memory.
 The idea for this implementation comes from my Fall 2014 Operating Systems
 class in which I did something similar in Typescript.
 -}
-module Host.Memory (
- -- Data Types
- Short,
- Bit,
- Byte,
- Memory(),
+module Host.Memory
+  (
+    Memory()
 
- -- Constructors
-initMemory,
-
- -- Functions
- getByte,
- setByte
-) where
+    -- Constructors
+  , initMemory
+  , getByte
+  , setByte
+  ) where
 
 import Host.Device
 import Data.Array
