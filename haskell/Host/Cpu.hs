@@ -32,7 +32,7 @@ module Host.Cpu (
 ) where
 
 import Control.Monad.Trans.State
-import Host.Device
+import Host.Device (Byte, Short, Bit, bytesToShort)
 import Host.Bus
 
 type CpuState = State Cpu
