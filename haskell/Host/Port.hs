@@ -17,13 +17,17 @@ module Host.Port
   , LocalTerminal ( LocalTerminal )
   ) where
 
-import Host.Device(Short, Byte)
+import Host.Device
 
-class Port a where
+class (Device a ) => Port a where
   sendByte :: Short -> a -> Byte -> IO ()
   receiveByte :: a -> IO (Byte)
 
-data LocalTerminal = LocalTerminal
+data LocalTerminal = LocalTerminal [Byte]
+
+instance Device LocalTerminal where
+  getByte = undefined
+  setByte = undefined
 
 instance Port LocalTerminal where
   sendByte address _ value = putStrLn (show value)

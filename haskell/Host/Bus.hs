@@ -8,8 +8,9 @@ module Host.Bus
   ) where
 
 import Host.Device
+import Host.Port
 
-data Bus = forall d. (Device d) => Bus [d]
+data Bus = forall d p. (Device d, Port p)  => Bus [d] [p]
 
 instance Device Bus where
   setByte address value bus
