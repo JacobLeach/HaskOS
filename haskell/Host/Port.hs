@@ -19,16 +19,12 @@ module Host.Port
 
 import Host.Device
 
-class (Device a ) => Port a where
-  sendByte :: Short -> a -> Byte -> IO ()
+class Port a where
+  sendByte :: a -> Byte -> IO ()
   receiveByte :: a -> IO (Byte)
 
 data LocalTerminal = LocalTerminal [Byte]
 
-instance Device LocalTerminal where
-  getByte = undefined
-  setByte = undefined
-
 instance Port LocalTerminal where
-  sendByte address _ value = putStrLn (show value)
+  sendByte _ value = putStrLn (show value)
   receiveByte _ = readLn
