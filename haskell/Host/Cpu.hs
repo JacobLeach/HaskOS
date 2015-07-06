@@ -44,7 +44,7 @@ data Cpu = Cpu { accumulator :: Byte
                , programCounter :: Short
                --, return :: Short
                , stackPointer :: Byte
-               --, status :: StatusFlags
+               , status :: StatusFlags
                , xRegister :: Byte
                , yRegister :: Byte
                , memory :: Bus
@@ -77,6 +77,7 @@ data StatusFlags = StatusFlags { break :: Bit
                                , negative :: Bit
                                , overflow :: Bit
                                , zero :: Bit
+                               , zFlag :: Bit
                                } deriving (Show)
 
 -- Easy way to get Cpu will all blanks
@@ -142,26 +143,55 @@ executeInstruction 0x00 = return ()
 --executeInstruction 0x40 = returnFromInterupt
 --executeInstruction 0x4C = jump
 --executeInstruction 0x6D = addWithCarry
---executeInstruction 0x8A = transferXRegisterToAccumulator
---executeInstruction 0x8C = storeYRegisterInBus
---executeInstruction 0x8D = storeAccumulatorInBus
---executeInstruction 0x8E = storeXRegisterInBus
---executeInstruction 0x98 = transferYRegisterToAccumulator
---executeInstruction 0xA0 = loadYRegisterWithConstant
---executeInstruction 0xA2 = loadXRegisterWithConstant
---executeInstruction 0xA8 = transferAccumulatorToYRegister
---executeInstruction 0xA9 = loadAccumulatorWithConstant
---executeInstruction 0xAA = transferAccumulatorToXRegister
---executeInstruction 0xAC = loadYRegisterAbsolute
---executeInstruction 0xAD = loadAccumulatorAbsolute
---executeInstruction 0xAE = loadXRegisterAbsolute
---executeInstruction 0xCC = compareY
+executeInstruction 0x8A = transferXRegisterToAccumulator
+executeInstruction 0x8C = storeYRegisterAbsolute
+executeInstruction 0x8D = storeAccumulatorAbsolute
+executeInstruction 0x8E = storeXRegisterAbsolute
+executeInstruction 0x98 = transferYRegisterToAccumulator
+executeInstruction 0xA0 = loadYRegisterImmediate
+executeInstruction 0xA2 = loadXRegisterImmediate
+executeInstruction 0xA8 = transferAccumulatorToYRegister
+executeInstruction 0xA9 = loadAccumulatorImmediate
+executeInstruction 0xAA = transferAccumulatorToXRegister
+executeInstruction 0xAC = loadYRegisterAbsolute
+executeInstruction 0xAD = loadAccumulatorAbsolute
+executeInstruction 0xAE = loadXRegisterAbsolute
+executeInstruction 0xCC = compareY
 --executeInstruction 0xD0 = branchNotEqual
---executeInstruction 0xEA = noOperation
---executeInstruction 0xEC = compareX
---executeInstruction 0xEE = increment
+executeInstruction 0xEA = noOperation
+executeInstruction 0xEC = compareX
+executeInstruction 0xEE = increment
 --executeInstruction 0xF0 = branchEqual
 --executeInstruction 0xFF = systemCall
+
+compareY :: CpuState ()
+compareY = do
+  address <- loadShortProgramCounterImmediate
+  memory <- gets memory
+  let value = getByte address memory
+  modify (\cpu -> cpu
+    { status = (status cpu) { zFlag = ((yRegister cpu) == value) } } )
+  return ()
+
+compareX :: CpuState ()
+compareX = do
+  address <- loadShortProgramCounterImmediate
+  memory <- gets memory
+  let value = getByte address memory
+  modify (\cpu -> cpu
+    { status = (status cpu) { zFlag = ((xRegister cpu) == value) } } )
+  return ()
+
+increment :: CpuState ()
+increment = do
+  address <- loadShortProgramCounterImmediate
+  memory <- gets memory
+  let value = getByte address memory
+  modify (\cpu -> cpu { memory = setByte address (value + 1) memory })
+  return ()
+
+noOperation :: CpuState ()
+noOperation = return ()
 
 -- Transfer instructions
 
@@ -181,7 +211,7 @@ transferAccumulatorToYRegister :: CpuState ()
 transferAccumulatorToYRegister
   = transferRegisterToRegister accumulator setYRegister
 
--- Load immediate (constant) value instructions
+-- Load immediate
 
 loadAccumulatorImmediate :: CpuState ()
 loadAccumulatorImmediate = loadRegisterImmediate setAccumulator
@@ -191,6 +221,8 @@ loadXRegisterImmediate = loadRegisterImmediate setXRegister
 
 loadYRegisterImmediate :: CpuState ()
 loadYRegisterImmediate = loadRegisterImmediate setYRegister
+
+-- Load Absolute
 
 loadAccumulatorAbsolute :: CpuState ()
 loadAccumulatorAbsolute = loadRegisterAbsolute setAccumulator
