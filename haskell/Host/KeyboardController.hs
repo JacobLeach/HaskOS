@@ -3,9 +3,9 @@ module Host.KeyboardController
 
   ) where
 
+import Data.IORef
 import Host.Device
 import Host.Port
-import Data.IORef
 
 data (Port p) => KeyboardController p
   = KeyboardController { inBuffer :: IORef [Byte]

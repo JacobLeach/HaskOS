@@ -4,6 +4,7 @@ module Host.TerminalController
   ) where
 
 import System.IO.Unsafe
+
 import Host.Device
 
 data TerminalController = TerminalController

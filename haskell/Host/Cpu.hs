@@ -32,7 +32,8 @@ module Host.Cpu (
 ) where
 
 import Control.Monad.Trans.State
-import Host.Device (Byte, Short, Bit, bytesToShort)
+
+import Host.Device (Device, Byte, Short, Bit, bytesToShort)
 import Host.Memory
 
 type CpuState = State Cpu

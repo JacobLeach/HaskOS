@@ -3,9 +3,9 @@ module Host.Controller
 
   ) where
 
+import Control.Monad
 import Data.IORef
 import Host.Cpu
-import Control.Monad
 
 --TODO: Implement
 data Interrupt = Interrupt
