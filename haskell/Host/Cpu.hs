@@ -24,6 +24,9 @@ module Host.Cpu (
 , initCpu
 
   -- Functions
+, setXRegister
+, xRegister
+
 , executeInstruction
 , writeByte
 , bytesToShort
@@ -83,7 +86,16 @@ data StatusFlags = StatusFlags { break :: Bit
 
 -- Easy way to get Cpu will all blanks
 initCpu :: Cpu
-initCpu = undefined
+initCpu = Cpu
+  0
+  0
+  0
+  (StatusFlags False False False False False False False False)
+  0
+  0
+  (initMemory 256)
+
+
 
 writeByte :: Short -> Byte -> CpuState()
 writeByte address value = do
