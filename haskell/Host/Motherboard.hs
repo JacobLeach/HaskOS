@@ -1,18 +1,19 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
-module Host.Bus
-  (
-    Bus (Bus)
-  , getByte
-  , setByte
-  ) where
+module Host.Motherboard
+(
+  Motherboard
+) where
 
+import Host.Cpu
 import Host.Device
+import Host.Memory
 import Host.Port
 
-data Bus = forall d p. (Device d, Port p)  => Bus [d] [p]
+data Motherboard = forall d p. (Device d, Port p) =>
+  Motherboard Cpu Memory [d] [p]
 
-instance Device Bus where
+instance Device Motherboard where
   setByte address value bus
     | address < 0xFF = bus
     | otherwise = bus

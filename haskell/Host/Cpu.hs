@@ -33,7 +33,7 @@ module Host.Cpu (
 
 import Control.Monad.Trans.State
 import Host.Device (Byte, Short, Bit, bytesToShort)
-import Host.Bus
+import Host.Memory
 
 type CpuState = State Cpu
 
@@ -47,7 +47,7 @@ data Cpu = Cpu { accumulator :: Byte
                , status :: StatusFlags
                , xRegister :: Byte
                , yRegister :: Byte
-               , memory :: Bus
+               , memory :: Memory
                }
 
 setAccumulator :: Byte -> CpuState()
