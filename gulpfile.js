@@ -13,9 +13,9 @@ var typescript = require('gulp-tsc');
 gulp.task('compile-typescript', function() {
 	var typescriptPaths = {
 		src: [
-			'source/scripts/*.ts',
-			'source/scripts/host/*.ts',
-			'source/scripts/os/*.ts'
+			'typescript/scripts/*.ts',
+			'typescript/scripts/host/*.ts',
+			'typescript/scripts/os/*.ts'
 		],
 		dest: 'dist/scripts/'
 	};
@@ -33,7 +33,7 @@ gulp.task('compile-typescript', function() {
 // This is just to show some good front-end web development techniques.
 gulp.task('copy-css', function() {
 	var cssPaths = {
-		src: ['source/styles/*.css'],
+		src: ['typescript/styles/*.css'],
 		dest: 'dist/styles/'
 	};
 
@@ -43,8 +43,8 @@ gulp.task('copy-css', function() {
 
 // This is the default task that will run when we run `gulp` at the command line.
 gulp.task('default', function() {
-	gulp.watch('source/scripts/*.ts',      ['compile-typescript']);
-	gulp.watch('source/scripts/host/*.ts', ['compile-typescript']);
-	gulp.watch('source/scripts/os/*.ts',   ['compile-typescript']);
-	gulp.watch('source/styles/*.css',      ['copy-css']);
+	gulp.watch('typescript/scripts/*.ts',      ['compile-typescript']);
+	gulp.watch('typescript/scripts/host/*.ts', ['compile-typescript']);
+	gulp.watch('typescript/scripts/os/*.ts',   ['compile-typescript']);
+	gulp.watch('typescript/styles/*.css',      ['copy-css']);
 });
