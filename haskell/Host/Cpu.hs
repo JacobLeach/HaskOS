@@ -32,6 +32,8 @@ module Host.Cpu (
 , bytesToShort
 , incrementProgramCounter
 , programCounter
+, loadByteProgramCounterImmediate
+, memory
 ) where
 
 import Control.Monad.Trans.State
@@ -93,7 +95,7 @@ initCpu = Cpu
   (StatusFlags False False False False False False False False)
   0
   0
-  (initMemory 256)
+  initMemoryNew
 
 
 

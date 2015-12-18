@@ -13,6 +13,7 @@ module Host.Memory
 
     -- Constructors
   , initMemory
+  , initMemoryNew
   , getByte
   , setByte
   ) where
@@ -24,6 +25,10 @@ data Memory = Memory (Array Short Byte) deriving (Show)
 
 initMemory :: Short -> Memory
 initMemory size = Memory $ array (0, size) [ (i, 0) | i <- [0..size]]
+
+initMemoryNew = Memory $ array (0, 256)
+  ([(0,0xEE), (1,0xFF), (2,0x00), (3, 0xEE), (4, 0xFF), (5,0x00)] ++
+    [(i,0) | i <- [6..256]])
 
 instance Device Memory where
   setByte address value (Memory a) = Memory $ a // [(address, value)]
