@@ -10,16 +10,18 @@ import Host.KeyboardController
 import Host.Memory
 import Host.Motherboard
 import Host.TerminalController
+import Host.Bus
 
 main :: IO ()
 main = do
-  let cpu = initCpu
+  let bus = initBus
+  let cpu = initCpu bus
   cpuLoop cpu
 
 cpuLoop :: Cpu -> IO ()
 cpuLoop cpu = do
   let a = execState (loop) cpu
-  putStrLn (show (getByte 255 (memory a)))
+  putStrLn (show (getByte 255 (bus a)))
   let newCpu = a {programCounter = 0}
   threadDelay 100000
   cpuLoop newCpu

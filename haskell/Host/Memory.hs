@@ -9,17 +9,14 @@ class in which I did something similar in Typescript.
 -}
 module Host.Memory
   (
-    Memory()
-
-    -- Constructors
-  , initMemory
+    initMemory
   , initMemoryNew
   , getByte
   , setByte
   ) where
 
 import Host.Device
-import Data.Array
+import Data.Array (Array, array, (//), (!))
 
 data Memory = Memory (Array Short Byte) deriving (Show)
 

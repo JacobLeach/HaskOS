@@ -17,12 +17,10 @@ class in which I did something similar in Typescript.
 -}
 
 module Host.Cpu (
-  -- Types
-  Cpu
-
   -- Constructors
-, initCpu
-
+  initCpu
+, Cpu
+, CpuState
   -- Functions
 , setXRegister
 , xRegister
@@ -33,13 +31,12 @@ module Host.Cpu (
 , incrementProgramCounter
 , programCounter
 , loadByteProgramCounterImmediate
-, memory
+, bus
 ) where
 
 import Control.Monad.Trans.State
-
-import Host.Device (Device, Byte, Short, Bit, bytesToShort)
-import Host.Memory
+import Host.Common(Bit, Byte, Short, bytesToShort)
+import Host.Bus
 
 type CpuState = State Cpu
 
@@ -53,8 +50,18 @@ data Cpu = Cpu { accumulator :: Byte
                , status :: StatusFlags
                , xRegister :: Byte
                , yRegister :: Byte
-               , memory :: Memory
+               , bus :: Bus
                }
+
+data StatusFlags = StatusFlags { break :: Bit
+                               , carry :: Bit
+                               , interruptDisable :: Bit
+                               , kernelMode :: Bit
+                               , negative :: Bit
+                               , overflow :: Bit
+                               , zero :: Bit
+                               , zFlag :: Bit
+                               } deriving (Show)
 
 setAccumulator :: Byte -> CpuState()
 setAccumulator value = do
@@ -76,40 +83,30 @@ setProgramCounter value = do
   modify (\cpu -> cpu { programCounter = value} )
   return ()
 
-data StatusFlags = StatusFlags { break :: Bit
-                               , carry :: Bit
-                               , interruptDisable :: Bit
-                               , kernelMode :: Bit
-                               , negative :: Bit
-                               , overflow :: Bit
-                               , zero :: Bit
-                               , zFlag :: Bit
-                               } deriving (Show)
-
 -- Easy way to get Cpu will all blanks
-initCpu :: Cpu
-initCpu = Cpu
+initCpu :: Bus -> Cpu
+initCpu bus = Cpu
   0
   0
   0
   (StatusFlags False False False False False False False False)
   0
   0
-  initMemoryNew
+  bus
 
 
 
 writeByte :: Short -> Byte -> CpuState()
 writeByte address value = do
-  memory <- gets memory
-  modify (\cpu -> cpu { memory = setByte address value memory})
+  bus <- gets bus
+  modify (\cpu -> cpu { bus = setByte address value bus})
 
 -- Helper function
 loadByteProgramCounterImmediate :: CpuState Byte
 loadByteProgramCounterImmediate = do
   programCounter <- gets programCounter
-  memory <- gets memory
-  let byte = getByte programCounter memory
+  bus <- gets bus
+  let byte = getByte programCounter bus
   incrementProgramCounter
   return (byte)
 
@@ -140,8 +137,8 @@ loadRegisterImmediate register = do
 loadRegisterAbsolute :: (Byte -> CpuState ()) -> CpuState ()
 loadRegisterAbsolute register = do
   address <- loadShortProgramCounterImmediate
-  memory <- gets memory
-  let value = getByte address memory
+  bus <- gets bus
+  let value = getByte address bus
   register value
   return ()
 
@@ -182,8 +179,8 @@ executeInstruction 0xEE = increment
 compareY :: CpuState ()
 compareY = do
   address <- loadShortProgramCounterImmediate
-  memory <- gets memory
-  let value = getByte address memory
+  bus <- gets bus
+  let value = getByte address bus
   modify (\cpu -> cpu
     { status = (status cpu) { zFlag = ((yRegister cpu) == value) } } )
   return ()
@@ -191,8 +188,8 @@ compareY = do
 compareX :: CpuState ()
 compareX = do
   address <- loadShortProgramCounterImmediate
-  memory <- gets memory
-  let value = getByte address memory
+  bus <- gets bus
+  let value = getByte address bus
   modify (\cpu -> cpu
     { status = (status cpu) { zFlag = ((xRegister cpu) == value) } } )
   return ()
@@ -200,9 +197,9 @@ compareX = do
 increment :: CpuState ()
 increment = do
   address <- loadShortProgramCounterImmediate
-  memory <- gets memory
-  let value = getByte address memory
-  modify (\cpu -> cpu { memory = setByte address (value + 1) memory })
+  bus <- gets bus
+  let value = getByte address bus
+  modify (\cpu -> cpu { bus = setByte address (value + 1) bus })
   return ()
 
 noOperation :: CpuState ()

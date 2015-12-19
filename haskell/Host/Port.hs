@@ -17,7 +17,7 @@ module Host.Port
   , LocalTerminal ( LocalTerminal )
   ) where
 
-import Host.Device
+import Host.Common(Byte)
 
 class Port a where
   sendByte :: a -> Byte -> IO ()
