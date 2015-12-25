@@ -18,11 +18,10 @@ main = do
 
 cpuLoop :: Cpu -> IO ()
 cpuLoop cpu = do
-  let a = execState (loop) cpu
-  putStrLn (show (getByte 255 (memory a)))
-  let newCpu = a {programCounter = 0}
   threadDelay 100000
-  cpuLoop newCpu
+  putStrLn (show (getByte 255 (memory cpu)))
+  cpuLoop $ execState (loop) cpu
+  return ()
 
 loop = do
   instruction <- loadByteProgramCounterImmediate

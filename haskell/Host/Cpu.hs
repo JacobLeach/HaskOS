@@ -156,7 +156,7 @@ storeRegisterAbsolute register = do
 executeInstruction :: Byte -> CpuState ()
 executeInstruction 0x00 = return ()
 --executeInstruction 0x40 = returnFromInterupt
---executeInstruction 0x4C = jump
+executeInstruction 0x4C = jump
 --executeInstruction 0x6D = addWithCarry
 executeInstruction 0x8A = transferXRegisterToAccumulator
 executeInstruction 0x8C = storeYRegisterAbsolute
@@ -258,3 +258,9 @@ storeXRegisterAbsolute = storeRegisterAbsolute xRegister
 
 storeYRegisterAbsolute:: CpuState ()
 storeYRegisterAbsolute = storeRegisterAbsolute yRegister
+
+jump :: CpuState ()
+jump = do
+  address <- loadShortProgramCounterImmediate
+  modify (\cpu -> cpu { programCounter = address })
+  return ()
