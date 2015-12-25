@@ -11,9 +11,12 @@ a remote website.
 Hopefully there will be one Websockets Port implementation that can be used by
 numerous different devices.
 -}
+{-# LANGUAGE ExistentialQuantification #-}
+
 module Host.Port
   (
     Port ( sendByte, receiveByte )
+  , PortWrapper( PortWrapper )
   , LocalTerminal ( LocalTerminal )
   ) where
 
@@ -22,6 +25,8 @@ import Host.Common(Byte)
 class Port a where
   sendByte :: a -> Byte -> IO ()
   receiveByte :: a -> IO (Byte)
+
+data PortWrapper = forall a. Port a => PortWrapper a
 
 data LocalTerminal = LocalTerminal [Byte]
 
